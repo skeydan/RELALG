@@ -1,0 +1,29 @@
+*** RELALG ***
+
+Implementation of relational algebra in Typed Racket (http://www.racket-lang.org/)
+
+
+Implemented relational operators are those featured in Chris Date's "Introduction to Database Systems" (8th ed., 2003)  and the more recent "SQL and Relational Theory" by the same
+author (2009).
+
+1.  "Original" operators (i.e., originally postulated by Ted Codd, but implemented here as defined in Date, 2003) are:
+    - union
+    - intersect
+    - difference
+    - product
+    - join and theta-join
+    - project
+    - restrict
+    - divide
+    - rename (= Date 2003 addition)
+
+2.  Additional operators:
+    - semijoin
+    - semidifference
+    - extend
+    - summarize (TBD)
+    - image (new in Date 2009: makes summarize superfluous) (TBD)
+
+
+
+
