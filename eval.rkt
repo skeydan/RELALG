@@ -13,22 +13,22 @@
 (define eval-relexpr
   (lambda (expr)
     (match expr
-      ((struct Rel (r)) (make-Rel r))
-      ((struct Union (r1 r2)) (make-Rel (build-union (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
-      ((struct Intersect (r1 r2)) (make-Rel (build-intersect (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
-      ((struct Difference (r1 r2)) (make-Rel (build-difference (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
-      ((struct Product (r1 r2)) (make-Rel (build-product (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
-      ((struct Join (r1 r2)) (make-Rel (build-join (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
-      ((struct Project (r h)) (make-Rel (build-projection (Rel-rel (eval-relexpr r)) (Heading-attrs h))))
-      ((struct Restrict (r p)) (make-Rel (build-restriction (Rel-rel (eval-relexpr r)) p)))
-      ((struct Rename (r l)) (make-Rel (build-renamed-relation (Rel-rel (eval-relexpr r)) l)))
-      ((struct Theta-Join (r1 r2 p)) (make-Rel (build-theta p (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
-      ((struct Divide (r1 r2 r3)) (make-Rel (build-divide (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)) (Rel-rel (eval-relexpr r3)))))
-      ((struct Semijoin (r1 r2)) (make-Rel (build-semijoin (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
-      ((struct Semiminus (r1 r2)) (make-Rel (build-semiminus (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
-      ((struct Extend (r e)) (make-Rel (build-extension (Rel-rel (eval-relexpr r)) e)))
-      ;((struct Summarize (r1 r2 a)) (make-Rel (build-summarize (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)) a)))
-      (else (make-Rel empty_rel)))))
+      ((struct Rel (r)) (Rel r))
+      ((struct Union (r1 r2)) (Rel (build-union (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
+      ((struct Intersect (r1 r2)) (Rel (build-intersect (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
+      ((struct Difference (r1 r2)) (Rel (build-difference (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
+      ((struct Product (r1 r2)) (Rel (build-product (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
+      ((struct Join (r1 r2)) (Rel (build-join (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
+      ((struct Project (r h)) (Rel (build-projection (Rel-rel (eval-relexpr r)) (Heading-attrs h))))
+      ((struct Restrict (r p)) (Rel (build-restriction (Rel-rel (eval-relexpr r)) p)))
+      ((struct Rename (r l)) (Rel (build-renamed-relation (Rel-rel (eval-relexpr r)) l)))
+      ((struct Theta-Join (r1 r2 p)) (Rel (build-theta p (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
+      ((struct Divide (r1 r2 r3)) (Rel (build-divide (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)) (Rel-rel (eval-relexpr r3)))))
+      ((struct Semijoin (r1 r2)) (Rel (build-semijoin (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
+      ((struct Semiminus (r1 r2)) (Rel (build-semiminus (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)))))
+      ((struct Extend (r e)) (Rel (build-extension (Rel-rel (eval-relexpr r)) e)))
+      ;((struct Summarize (r1 r2 a)) (Rel (build-summarize (Rel-rel (eval-relexpr r1)) (Rel-rel (eval-relexpr r2)) a)))
+      (else (Rel empty_rel)))))
 
 
 ; These functions implement the relational algebra operations ----------------------------------------------------------------------------------------------------------------------
@@ -41,7 +41,7 @@
   (lambda (r1 r2)
     (if (not (equal? (Relation-heading r1) (Relation-heading r2)))
         (error "Cannot use UNION on relations with different headings!" r1 r2)
-        (make-Relation (Relation-heading r1) (make-Body (unique-tuples r1 r2))))))
+        (Relation (Relation-heading r1) (Body (unique-tuples r1 r2))))))
 
 ; INTERSECTION: builds the union of 2 relations, removing any duplicates
 (: build-intersect (Relation Relation -> Relation))
@@ -49,7 +49,7 @@
   (lambda (r1 r2)
     (if (not (equal? (Relation-heading r1) (Relation-heading r2)))
         (error "Cannot use INTERSECT on relations with different headings!" r1 r2)
-        (make-Relation (Relation-heading r1) (make-Body (common-tuples r1 r2))))))
+        (Relation (Relation-heading r1) (Body (common-tuples r1 r2))))))
 
 ; DIFFERENCE: subtracts the 2nd relation's tuples from the first
 (: build-difference (Relation Relation -> Relation))
@@ -57,7 +57,7 @@
   (lambda (r1 r2)
     (if (not (equal? (Relation-heading r1) (Relation-heading r2)))
         (error "Cannot use DIFFERENCE on relations with different headings!" r1 r2)
-        (make-Relation (Relation-heading r1) (make-Body (tuples-difference r1 r2))))))
+        (Relation (Relation-heading r1) (Body (tuples-difference r1 r2))))))
 
 ; PRODUCT: builds the cartesian product of 2 relations
 (: build-product (Relation Relation -> Relation))
@@ -65,7 +65,7 @@
   (lambda (r1 r2)
     (if (not (attribute-names-disjoint? (Relation-heading r1) (Relation-heading r2)))
         (error "Cannot use PRODUCT on relations with overlapping attribute names!" r1 r2)
-        (make-Relation (cartesian-heading (Relation-heading r1) (Relation-heading r2)) (make-Body (cartesian-tuples r1 r2))))))
+        (Relation (cartesian-heading (Relation-heading r1) (Relation-heading r2)) (Body (cartesian-tuples r1 r2))))))
 
 ; JOIN: builds the join of 2 relations
 ; if r1 and 2 r2 have no attributes in common, the cartesian product is formed; if all attributes are the same, the intersection is formed; otherwise, r1 and r2 are joined on all common attributes.
@@ -76,7 +76,7 @@
       (cond ((attribute-names-disjoint? h1 h2) (build-product r1 r2))
             ((equal? h1 h2) (build-intersect r1 r2))
             (else (let ((joining-attributes (common-attributes h1 h2)))
-                    (make-Relation (joined-heading joining-attributes h1 h2) (make-Body (joined-tuples joining-attributes r1 r2)))))))))
+                    (Relation (joined-heading joining-attributes h1 h2) (Body (joined-tuples joining-attributes r1 r2)))))))))
 
 ; THETA-JOIN: joins two relations on a non-equality operator (though it would also work with equality). The attributes used in the join need to have different names.
 ; Theta-join is implemented as a restriction (on the given predicate) following a cartesian product.
@@ -97,13 +97,13 @@
              ((struct Is (op rand1 rand2))
               (filter (lambda: ((x : Tuple)) ((get-comp-function op) (eval-operand x rand1) (eval-operand x rand2))) (Body-tuples (Relation-body r))))
               ((struct Not (p)) (match p
-                                  ((struct Is (op att val)) (Body-tuples (Relation-body (build-restriction r (make-Is (negate op) att val)))))
+                                  ((struct Is (op att val)) (Body-tuples (Relation-body (build-restriction r (Is (negate op) att val)))))
                                   ((struct Not (p3)) (Body-tuples (Relation-body (build-restriction r p3))))
-                                  ((struct And (p1 p2)) (Body-tuples (Relation-body (build-restriction r (make-Or (make-Not p1) (make-Not p2))))))
-                                  ((struct Or (p1 p2)) (Body-tuples (Relation-body (build-restriction r (make-And (make-Not p1) (make-Not p2))))))))
+                                  ((struct And (p1 p2)) (Body-tuples (Relation-body (build-restriction r (Or (Not p1) (Not p2))))))
+                                  ((struct Or (p1 p2)) (Body-tuples (Relation-body (build-restriction r (And (Not p1) (Not p2))))))))
               ((struct And (p1 p2)) (Body-tuples (Relation-body (build-intersect (build-restriction r p1) (build-restriction r p2)))))
               ((struct Or (p1 p2)) (Body-tuples (Relation-body (build-union (build-restriction r p1) (build-restriction r p2))))))))
-      (make-Relation (Relation-heading r) (make-Body result)))))
+      (Relation (Relation-heading r) (Body result)))))
 
 ; DIVIDE: returns a new relation, keeping only those tuples from r1 for which every combination with a tuple from r2 is contained in r3.
 ; = Date's "small divide"
@@ -118,7 +118,7 @@
             (filter
              (lambda: ((x : Tuple)) (andmap (lambda: ((z : Tuple)) (contains? per-tuples z equal?)) (append-every-tuple-from-list x divisor-tuples)))
              dividend-tuples)))
-      (make-Relation (Relation-heading dividend) (make-Body quotient-tuples)))))
+      (Relation (Relation-heading dividend) (Body quotient-tuples)))))
 
 ; RENAME: returns a new relation with attributes renamed as specified in the given list of attributes & new names.
 ; Note: the passed-in relation's heading is not modified.
@@ -135,15 +135,15 @@
 (: build-projection (Relation (Listof Attribute) -> Relation))
 (define build-projection
   (lambda (r atts)
-    (make-Relation (make-Heading (filter (lambda: ((x : Attribute)) (contains? atts x equal?)) (Heading-attrs (Relation-heading r))))
-                   (make-Body (remove-duplicates (map (lambda: ((x : Tuple)) (make-Tuple (filter (lambda: ((y : Triple)) (contains? atts y triple-attribute=?)) (Tuple-triples x))))  (Body-tuples (Relation-body r))) equal?)))))
+    (Relation (Heading (filter (lambda: ((x : Attribute)) (contains? atts x equal?)) (Heading-attrs (Relation-heading r))))
+                   (Body (remove-duplicates (map (lambda: ((x : Tuple)) (Tuple (filter (lambda: ((y : Triple)) (contains? atts y triple-attribute=?)) (Tuple-triples x))))  (Body-tuples (Relation-body r))) equal?)))))
 
 
 
 ; Additional operators as of C. J. Date  -------------------------------------------------------------------------------------------------------------------------------------------
 
 ; SEMIJOIN: builds a new relation from r1, retaining only those tuples for which a matching tuple (= a tuple containing the same values in attributes common to both relations) exists.
-; Current implementation is a projection following a join - this will reuse any join optimization. TODO: A possible alternative might be just directly hashing the values in common attributes occurring in r2 and probing the r1 tuples against the hashtable (thus avoiding the projection step).
+; Current implementation is a projection following a join - this will reuse any join optimization.
 (: build-semijoin (Relation Relation -> Relation))
 (define build-semijoin
   (lambda (r1 r2)
@@ -151,10 +151,10 @@
       (cond ((attribute-names-disjoint? h1 h2) (error "build-semijoin: Makes no sense using semijoin on relations without common attributes!" r1 r2))
             ((equal? h1 h2) (error "build-semijoin: Makes no sense using semijoin on relations with identical attributes, just use intersect here!" r1 r2))
             (else (let ((joining-attributes (common-attributes h1 h2)))
-                    (build-projection (make-Relation (joined-heading joining-attributes h1 h2) (make-Body (joined-tuples joining-attributes r1 r2))) (Heading-attrs (Relation-heading r1)))))))))
+                    (build-projection (Relation (joined-heading joining-attributes h1 h2) (Body (joined-tuples joining-attributes r1 r2))) (Heading-attrs (Relation-heading r1)))))))))
 
 ; SEMIMINUS: builds a new relation from r1, retaining only those tuples for which a matching tuple does not exist in r2.
-; Current implementation is a semijoin followed by a difference. TODO: Try out a hashing-only solution, skipping the difference and projection step.
+; Current implementation is a semijoin followed by a difference.
 (: build-semiminus (Relation Relation -> Relation))
 (define build-semiminus
   (lambda (r1 r2)
@@ -166,7 +166,7 @@
   (lambda (r e)
     (let* ((r-tuples (Body-tuples (Relation-body r)))
            (result (map (lambda: ((x : Tuple)) (append-new-triples x e)) r-tuples)))
-      (make-Relation (extended-heading r e) (make-Body result)))))
+      (Relation (extended-heading r e) (Body result)))))
 
 
 ; SUMMARIZE: summarizes r1 as per the distinct value combinations (or values, if r2 has one attribute only) of r2. I.e. for every tuple of r2 (duplicates are not allowed), a summary of certain attributes in r1 is computed. The relation returned contains all attributes of r2, plus the newly requested summarizing attributes. 

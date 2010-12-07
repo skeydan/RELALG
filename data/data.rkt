@@ -6,46 +6,46 @@
 
 (: suppliers Relation)
 (define suppliers
-  (make-Relation
-   (make-Heading 
-    (list (make-Attribute "s#" 'S) (make-Attribute "sname" 'S) (make-Attribute "status" 'N) (make-Attribute "city" 'S)))
-   (make-Body 
-    (list (make-Tuple (list (make-Triple "s#" 'S (make-S "S1")) (make-Triple "sname" 'S (make-S "Smith")) (make-Triple "status" 'N (make-N 20)) (make-Triple "city" 'S (make-S "London"))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S2")) (make-Triple "sname" 'S (make-S "Jones")) (make-Triple "status" 'N (make-N 30)) (make-Triple "city" 'S (make-S "Paris"))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S3")) (make-Triple "sname" 'S (make-S "Blake")) (make-Triple "status" 'N (make-N 30)) (make-Triple "city" 'S (make-S "Paris"))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S4")) (make-Triple "sname" 'S (make-S "Clark")) (make-Triple "status" 'N (make-N 20)) (make-Triple "city" 'S (make-S "London"))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S5")) (make-Triple "sname" 'S (make-S "Adams")) (make-Triple "status" 'N (make-N 30)) (make-Triple "city" 'S (make-S "Athens"))))))))
+  (Relation
+   (Heading 
+    (list (Attribute "s#" string?) (Attribute "sname" string?) (Attribute "status" real?) (Attribute "city" string?)))
+   (Body 
+    (list (Tuple (list (Triple "s#" string? "S1") (Triple "sname" string? "Smith") (Triple "status" real? 20) (Triple "city" string? "London")))
+          (Tuple (list (Triple "s#" string? "S2") (Triple "sname" string? "Jones") (Triple "status" real? 30) (Triple "city" string? "Paris")))
+          (Tuple (list (Triple "s#" string? "S3") (Triple "sname" string? "Blake") (Triple "status" real? 30) (Triple "city" string? "Paris")))
+          (Tuple (list (Triple "s#" string? "S4") (Triple "sname" string? "Clark") (Triple "status" real? 20) (Triple "city" string? "London")))
+          (Tuple (list (Triple "s#" string? "S5") (Triple "sname" string? "Adams") (Triple "status" real? 30) (Triple "city" string? "Athens")))))))
 
 (: parts Relation)
 (define parts
-  (make-Relation
-   (make-Heading 
-    (list (make-Attribute "p#" 'S) (make-Attribute "pname" 'S) (make-Attribute "color" 'S) (make-Attribute "weight" 'N) (make-Attribute "city" 'S)))
-   (make-Body 
-    (list (make-Tuple (list (make-Triple "p#" 'S (make-S "P1")) (make-Triple "pname" 'S (make-S "Nut")) (make-Triple "color" 'S (make-S "Red")) (make-Triple "weight" 'N (make-N 12.0)) (make-Triple "city" 'S (make-S "London"))))
-          (make-Tuple (list (make-Triple "p#" 'S (make-S "P2")) (make-Triple "pname" 'S (make-S "Bolt")) (make-Triple "color" 'S (make-S "Green")) (make-Triple "weight" 'N (make-N 17.0)) (make-Triple "city" 'S (make-S "Paris"))))
-          (make-Tuple (list (make-Triple "p#" 'S (make-S "P3")) (make-Triple "pname" 'S (make-S "Screw")) (make-Triple "color" 'S (make-S "Blue")) (make-Triple "weight" 'N (make-N 17.0)) (make-Triple "city" 'S (make-S "Oslo"))))
-          (make-Tuple (list (make-Triple "p#" 'S (make-S "P4")) (make-Triple "pname" 'S (make-S "Screw")) (make-Triple "color" 'S (make-S "Red")) (make-Triple "weight" 'N (make-N 14.0))  (make-Triple "city" 'S (make-S "London"))))
-          (make-Tuple (list (make-Triple "p#" 'S (make-S "P5")) (make-Triple "pname" 'S (make-S "Cam")) (make-Triple "color" 'S (make-S "Blue")) (make-Triple "weight" 'N (make-N 12.0)) (make-Triple "city" 'S (make-S "Paris"))))
-          (make-Tuple (list (make-Triple "p#" 'S (make-S "P6")) (make-Triple "pname" 'S (make-S "Cog")) (make-Triple "color" 'S (make-S "Red")) (make-Triple "weight" 'N (make-N 19.0)) (make-Triple "city" 'S (make-S "London"))))))))
+  (Relation
+   (Heading 
+    (list (Attribute "p#" string?) (Attribute "pname" string?) (Attribute "color" string?) (Attribute "weight" real?) (Attribute "city" string?)))
+   (Body 
+    (list (Tuple (list (Triple "p#" string? "P1") (Triple "pname" string? "Nut") (Triple "color" string?  "Red") (Triple "weight" real? 12.0) (Triple "city" string? "London")))
+          (Tuple (list (Triple "p#" string? "P2") (Triple "pname" string? "Bolt") (Triple "color" string?  "Green") (Triple "weight" real? 17.0) (Triple "city" string? "Paris")))
+          (Tuple (list (Triple "p#" string? "P3") (Triple "pname" string? "Screw") (Triple "color" string?  "Blue") (Triple "weight" real? 17.0) (Triple "city" string? "Oslo")))
+          (Tuple (list (Triple "p#" string? "P4") (Triple "pname" string? "Screw") (Triple "color" string?  "Red") (Triple "weight" real? 14.0)  (Triple "city" string? "London")))
+          (Tuple (list (Triple "p#" string? "P5") (Triple "pname" string? "Cam") (Triple "color" string?  "Blue") (Triple "weight" real? 12.0) (Triple "city" string? "Paris")))
+          (Tuple (list (Triple "p#" string? "P6") (Triple "pname" string? "Cog") (Triple "color" string?  "Red") (Triple "weight" real? 19.0) (Triple "city" string? "London")))))))
 
 (: shipments Relation)
 (define shipments
-  (make-Relation
-   (make-Heading 
-    (list (make-Attribute "s#" 'S) (make-Attribute "p#" 'S) (make-Attribute "qty" 'N)))
-   (make-Body 
-    (list (make-Tuple (list (make-Triple "s#" 'S (make-S "S1")) (make-Triple "p#" 'S (make-S "P1")) (make-Triple "qty" 'N (make-N 300))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S1")) (make-Triple "p#" 'S (make-S "P2")) (make-Triple "qty" 'N (make-N 200))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S1")) (make-Triple "p#" 'S (make-S "P3")) (make-Triple "qty" 'N (make-N 400))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S1")) (make-Triple "p#" 'S (make-S "P4")) (make-Triple "qty" 'N (make-N 200))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S1")) (make-Triple "p#" 'S (make-S "P5")) (make-Triple "qty" 'N (make-N 300))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S1")) (make-Triple "p#" 'S (make-S "P6")) (make-Triple "qty" 'N (make-N 300))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S2")) (make-Triple "p#" 'S (make-S "P1")) (make-Triple "qty" 'N (make-N 300))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S2")) (make-Triple "p#" 'S (make-S "P2")) (make-Triple "qty" 'N (make-N 400))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S3")) (make-Triple "p#" 'S (make-S "P2")) (make-Triple "qty" 'N (make-N 200))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S4")) (make-Triple "p#" 'S (make-S "P2")) (make-Triple "qty" 'N (make-N 200))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S4")) (make-Triple "p#" 'S (make-S "P4")) (make-Triple "qty" 'N (make-N 300))))
-          (make-Tuple (list (make-Triple "s#" 'S (make-S "S4")) (make-Triple "p#" 'S (make-S "P5")) (make-Triple "qty" 'N (make-N 400))))))))
+  (Relation
+   (Heading 
+    (list (Attribute "s#" string?) (Attribute "p#" string?) (Attribute "qty" real?)))
+   (Body 
+    (list (Tuple (list (Triple "s#" string? "S1") (Triple "p#" string? "P1") (Triple "qty" real? 300)))
+          (Tuple (list (Triple "s#" string? "S1") (Triple "p#" string? "P2") (Triple "qty" real? 200)))
+          (Tuple (list (Triple "s#" string? "S1") (Triple "p#" string? "P3") (Triple "qty" real? 400)))
+          (Tuple (list (Triple "s#" string? "S1") (Triple "p#" string? "P4") (Triple "qty" real? 200)))
+          (Tuple (list (Triple "s#" string? "S1") (Triple "p#" string? "P5") (Triple "qty" real? 300)))
+          (Tuple (list (Triple "s#" string? "S1") (Triple "p#" string? "P6") (Triple "qty" real? 300)))
+          (Tuple (list (Triple "s#" string? "S2") (Triple "p#" string? "P1") (Triple "qty" real? 300)))
+          (Tuple (list (Triple "s#" string? "S2") (Triple "p#" string? "P2") (Triple "qty" real? 400)))
+          (Tuple (list (Triple "s#" string? "S3") (Triple "p#" string? "P2") (Triple "qty" real? 200)))
+          (Tuple (list (Triple "s#" string? "S4") (Triple "p#" string? "P2") (Triple "qty" real? 200)))
+          (Tuple (list (Triple "s#" string? "S4") (Triple "p#" string? "P4") (Triple "qty" real? 300)))
+          (Tuple (list (Triple "s#" string? "S4") (Triple "p#" string? "P5") (Triple "qty" real? 400)))))))
 
 

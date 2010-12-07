@@ -1,5 +1,4 @@
 #lang typed/racket
-(require racket/match)
 (require (planet dherman/types:2))
 (require "helper-functions.rkt")
 
@@ -8,57 +7,21 @@
 
 ; Types ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-;(define-datatype Value
-;  (S ((s : String)))
-;  (N ((n : Real))))
-; (define-predicate Value? Value)
-;(: value=? (Value Value -> Boolean))
-;(define value=?
-;  (lambda (v1 v2)
-;    (match v1
-;      ((struct S (s1)) (match v2
-;                         ((struct S (s2)) (string=? s1 s2))
-;                         ((struct N (n)) (error "value=?: cannot compare string to Real: " s1 n))))
-;      ((struct N (n1)) (match v2
-;                         ((struct N (n2)) (= n1 n2))
-;                         ((struct S (s)) (error "value=?: cannot compare Real to string: " n1 s)))))))
-;
+(define-type Value (U Real String)) 
 
-(define-struct: S ((s : String))
-  #:property prop:equal+hash
-  (list (lambda (s1 s2 equal?-recur)
-          (string=? (S-s s1) (S-s s2)))
-        (lambda (s hash-recur)
-          (hash-recur (S-s s)))
-        (lambda (s hash2-recur)
-          (hash2-recur (S-s s)))))
- 
-(define-struct: N ((n : Real))
-  #:property prop:equal+hash
-  (list (lambda (n1 n2 equal?-recur)
-          (= (N-n n1) (N-n n2)))
-        (lambda (n hash-recur)
-          (hash-recur (exact->inexact (N-n n))))
-        (lambda (n hash2-recur)
-          (hash2-recur (exact->inexact (N-n n))))))
+(struct: Identifier ((name : Symbol)))
 
-(define-type Value (U N S)) 
-
-(define-struct: Identifier ((name : Symbol)))
-
-(define-struct: Triple ((name : String) (typename : Symbol) (value : Value))
+(define-struct: Triple ((name : String) (type : (U (Any -> Boolean : Real) (Any -> Boolean : String))) (value : Value))
   #:mutable
   #:property prop:equal+hash
     (list (lambda (t1 t2 equal?-recur) ; Attribute names are case insensitive, attribute type names are not; values are treated individually for each variant
-            (and (string=? (string-upcase (Triple-name t1)) (string-upcase (Triple-name t2))) (eq? (Triple-typename t1) (Triple-typename t2)) (equal? (Triple-value t1) (Triple-value t2))))
+            (and (string=? (string-upcase (Triple-name t1)) (string-upcase (Triple-name t2))) (eq? (Triple-type t1) (Triple-type t2)) (equal? (Triple-value t1) (Triple-value t2))))
           (lambda (t hash-recur)
-            (+ (hash-recur (string-upcase (Triple-name t))) (* 3 (hash-recur (Triple-typename t))) (* 3 (hash-recur (Triple-value t)))))
+            (+ (hash-recur (string-upcase (Triple-name t))) (* 3 (hash-recur (Triple-type t))) (* 3 (hash-recur (Triple-value t)))))
            (lambda (t hash2-recur)
-            (+ (hash2-recur (string-upcase (Triple-name t))) (* 3 (hash2-recur (Triple-typename t))) (* 3 (hash2-recur (Triple-value t)))))))
+            (+ (hash2-recur (string-upcase (Triple-name t))) (* 3 (hash2-recur (Triple-type t))) (* 3 (hash2-recur (Triple-value t)))))))
 
-(define-type Triplist (Listof Triple))
-
-(define-struct: Tuple ((triples : (Listof Triple)))
+(struct: Tuple ((triples : (Listof Triple)))
   #:property prop:equal+hash
     (list (lambda (t1 t2 equal?-recur)
             (let ((t1 (Tuple-triples t1)) (t2 (Tuple-triples t2))) (lists-same? t1 t2 equal?)))
@@ -67,11 +30,9 @@
           (lambda (h hash2-recur)
             (apply + (map hash2-recur (Tuple-triples h))))))
 
-(define-type Tuplist (Listof Tuple))
+(struct: Relation ((heading : Heading) (body : Body)))
 
-(define-struct: Relation ((heading : Heading) (body : Body)))
-
-(define-struct: Heading ((attrs : (Listof Attribute)))
+(struct: Heading ((attrs : (Listof Attribute)))
    #:property prop:equal+hash
     (list (lambda (h1 h2 equal?-recur)
             (let ((attlist1 (Heading-attrs h1)) (attlist2 (Heading-attrs h2))) (lists-same? attlist1 attlist2 equal?)))
@@ -80,17 +41,17 @@
           (lambda (h hash2-recur)
             (apply + (map hash2-recur (Heading-attrs h))))))
 
-(define-struct: Attribute ((name : String) (typename : Symbol))
+(struct: Attribute ((name : String) (type : (U (Any -> Boolean : Real) (Any -> Boolean : String))))
   #:mutable
   #:property prop:equal+hash
     (list (lambda (a1 a2 equal?-recur) ; Attribute names are case insensitive, attribute type names are not
-            (and (string=? (string-upcase (Attribute-name a1)) (string-upcase (Attribute-name a2))) (eq? (Attribute-typename a1) (Attribute-typename a2))))
+            (and (string=? (string-upcase (Attribute-name a1)) (string-upcase (Attribute-name a2))) (eq? (Attribute-type a1) (Attribute-type a2))))
           (lambda (a hash-recur)
-            (+ (hash-recur (string-upcase (Attribute-name a))) (* 3 (hash-recur (Attribute-typename a)))))
+            (+ (hash-recur (string-upcase (Attribute-name a))) (* 3 (hash-recur (Attribute-type a)))))
            (lambda (a hash-recur)
-            (+ (hash-recur (string-upcase (Attribute-name a))) (* 3 (hash-recur (Triple-typename a)))))))
+            (+ (hash-recur (string-upcase (Attribute-name a))) (* 3 (hash-recur (Attribute-type a)))))))
 
-(define-struct: Body ((tuples : (Listof Tuple))))
+(struct: Body ((tuples : (Listof Tuple))))
 
 (define-datatype TupleExpr
   (Tuplevar ((id : Identifier)))
@@ -119,11 +80,13 @@
  )
 (define-predicate RelExpr? RelExpr)
 
-(define-struct: Extension ((operand : Operand) (name : String)))
+(define-type Expr (U Predicate RelExpr Value Identifier TupleExpr))
+
+(struct: Extension ((operand : Operand) (name : String)))
 
 (define-type Extlist (Listof Extension))
 
-(define-struct: Aggregation ((aggop : AggOperand) (name : String)))
+(struct: Aggregation ((aggop : AggOperand) (name : String)))
 
 (define-type Agglist (Listof Aggregation))
 
@@ -136,31 +99,11 @@
   (NotEql #:constant noteql))
 (define-predicate Bool-Op? Bool-Op)
 
-(define-datatype Arith-Op
-  (Plus #:constant _+)
-  (Min #:constant _-)
-  (Tim #:constant _*)
-  (Div #:constant _/))
-(define-predicate Arith-Op? Arith-Op)
-
-(define-type Operator (U Arith-Op Bool-Op))
-(define-predicate Operator? Operator)
-
-(define-datatype Fun
-  (Substr ((p : (case-lambda (String Exact-Nonnegative-Integer -> String) (String Exact-Nonnegative-Integer Exact-Nonnegative-Integer -> String)))))
-  (StrApp ((p : (String * -> String)))))
-
-(define-datatype AggFun
-  (Count ((p : (All (a) ((Listof a) -> Exact-Nonnegative-Integer)))))
-  (Sum ((p : ((Listof Number) -> Number)))))
-
-(define-type Expr (U Predicate RelExpr Value Identifier TupleExpr))
-
 (define-datatype Operand
   (Att ((att : Attribute)))
   (Val ((val : Value)))
-  (AppOp ((op : Arith-Op) (o1 : Operand) (o2 : Operand)))
-  (AppFun ((f : Fun) (o1 : Operand) (o2 : Operand))))
+  (App ((f : Fun) (o1 : Operand) (o2 : Operand))))
+(define-predicate Operand? Operand)
 
 (define-datatype AggOperand
   (AppAggFun ((f : AggFun) (a : Attribute))))
@@ -172,9 +115,31 @@
  (Or ((p1 : Predicate) (p2 : Predicate))))
 (define-predicate Predicate? Predicate) 
 
+(define-type Fun (U StringFun ArithFun))
+
+(define-type AggFun
+  (U
+   (All (a) ((Listof a) -> Nonnegative-Fixnum)) ; length (=> count tuples)
+   ))
+
+(define-type StringFun
+  (U
+   (case-lambda (String Integer -> String) (String Integer Integer -> String)) ; substring
+   (String * -> String) ; string-append
+   ))
+
+(define-type ArithFun
+  (U
+   (case-lambda (Integer Integer * -> Integer) (Exact-Rational Exact-Rational * -> Exact-Rational) (Float Float * -> Float) (Float Real * -> Float) (Real Float Real * -> Float) (Inexact-Real Inexact-Real * -> Inexact-Real) (Real Real * -> Real) ((U Inexact-Complex Inexact-Real Exact-Rational) * -> Inexact-Complex) (Inexact-Complex Complex * -> Inexact-Complex) (Complex Inexact-Complex Complex * -> Inexact-Complex) (Complex Complex * -> Complex)) ; -
+   (case-lambda (Exact-Positive-Integer Natural * -> Exact-Positive-Integer) (Natural Exact-Positive-Integer Natural * -> Exact-Positive-Integer) (Natural * -> Natural) (Integer * -> Integer) (Exact-Rational * -> Exact-Rational) (Nonnegative-Float * -> Nonnegative-Float) (Float * -> Float) ((U Nonnegative-Float Exact-Positive-Integer Zero) * -> Nonnegative-Float) (Float Real * -> Float) (Real Float Real * -> Float) (Inexact-Real * -> Inexact-Real) (Real * -> Real) ((U Inexact-Complex Inexact-Real Exact-Rational) * -> Inexact-Complex) (Inexact-Complex Complex * -> Inexact-Complex) (Complex Inexact-Complex Complex * -> Inexact-Complex) (Complex * -> Complex)) ; +
+   (case-lambda (Exact-Positive-Integer * -> Exact-Positive-Integer) (Natural * -> Natural) (Integer * -> Integer) (Exact-Rational * -> Exact-Rational) (Nonnegative-Float * -> Nonnegative-Float) (Float * -> Float) ((U Nonnegative-Float Exact-Positive-Integer) * -> Nonnegative-Float) ((U Float Exact-Positive-Integer) * -> Float) (Float Inexact-Real * -> Float) (Inexact-Real Float Inexact-Real * -> Float) (Inexact-Real * -> Inexact-Real) (Real * -> Real) ((U Inexact-Complex Float) * -> Inexact-Complex) (Complex * -> Complex)) ; *
+   (case-lambda (Integer Integer * -> Exact-Rational) (Exact-Rational Exact-Rational * -> Exact-Rational) (Float Float * -> Float) (Float Real * -> Float) (Inexact-Real Float Inexact-Real * -> Float) (Inexact-Real Inexact-Real * -> Inexact-Real) (Real Real * -> Real) ((U Inexact-Complex Float) (U Inexact-Complex Inexact-Real Exact-Rational) * -> Inexact-Complex) (Inexact-Complex Inexact-Complex * -> Inexact-Complex) (Complex Complex * -> Complex)) ; /
+   ))
+
 
 ; Constants ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 (: empty_rel Relation)
-(define empty_rel (make-Relation (make-Heading '()) (make-Body '())))
+(define empty_rel (Relation (Heading '()) (Body '())))
+
 

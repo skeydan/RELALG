@@ -24,7 +24,7 @@
 (: print-attribute (Attribute -> String))
 (define print-attribute
   (lambda (a)
-    (format "~a(~a)" (Attribute-name a) (Attribute-typename a))))
+    (format "~a(~a)" (Attribute-name a) (Attribute-type a))))
 
 (: print-body (Body -> String))
 (define print-body
@@ -39,21 +39,15 @@
 (: print-tuple (Tuple -> String))
 (define print-tuple
   (lambda (t)
-    (foldr (lambda: ((x : Triple) (y : String)) (string-append (format (if (null? (string->list y)) "~a" "~a, ") (print-value (Triple-value x))) y)) "" (Tuple-triples t))))
+    (foldr (lambda: ((x : Triple) (y : String)) (string-append (format (if (null? (string->list y)) "~a" "~a, ") (Triple-value x)) y)) "" (Tuple-triples t))))
 
-(: print-value (Value -> String))
-(define print-value
-  (lambda (v)
-    (match v
-      ((struct N (n)) (number->string n))
-      ((struct S (s)) s))))
 
 ; Comparison functions for relations and their components --------------------------------------------------------------------------------------------------------------------------
 
 (: triple-attribute=? (Attribute Triple -> Boolean))
 (define triple-attribute=?
   (lambda (a t)
-    (and (string=? (string-upcase (Triple-name t)) (string-upcase (Attribute-name a))) (eq? (Triple-typename t) (Attribute-typename a)))))
+    (and (string=? (string-upcase (Triple-name t)) (string-upcase (Attribute-name a))) (eq? (Triple-type t) (Attribute-type a)))))
 
 
 ; Utility functions on relations ---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -72,7 +66,7 @@
 (: new-relation-from (Relation -> Relation))
 (define new-relation-from
   (lambda (r)
-    (make-Relation (make-Heading (map (lambda: ((a : Attribute)) (make-Attribute (Attribute-name a) (Attribute-typename a))) (Heading-attrs (Relation-heading r)))) (make-Body (map (lambda: ((tup : Tuple)) (make-Tuple (map (lambda: ((trip : Triple)) (make-Triple (Triple-name trip) (Triple-typename trip) (Triple-value trip))) (Tuple-triples tup))))  (Body-tuples (Relation-body r)))))))
+    (Relation (Heading (map (lambda: ((a :  Attribute)) (Attribute (Attribute-name a) (Attribute-type a))) (Heading-attrs (Relation-heading r)))) (Body (map (lambda: ((tup : Tuple)) (Tuple (map (lambda: ((trip : Triple)) (Triple (Triple-name trip) (Triple-type trip) (Triple-value trip))) (Tuple-triples tup))))  (Body-tuples (Relation-body r)))))))
 
 
 ; Utility functions on tuples ------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -119,7 +113,7 @@
 (: append-every-tuple-from-list (Tuple (Listof Tuple) -> (Listof Tuple)))
 (define append-every-tuple-from-list
   (lambda (t tlist)
-    (map (lambda: ((x : Tuple)) (make-Tuple (append (Tuple-triples t) (Tuple-triples x)))) tlist)))
+    (map (lambda: ((x : Tuple)) (Tuple (append (Tuple-triples t) (Tuple-triples x)))) tlist)))
 
 ; determine adequate join method
 (: determine-join-method ((Listof Attribute) Relation Relation -> Symbol))
@@ -179,7 +173,7 @@
 (: probe-hash ((HashTable (Listof Triple) (Listof Tuple)) (Listof Tuple) (Listof Attribute) -> (Listof (Listof Tuple))))
 (define probe-hash
   (lambda (ht tlist joining-attrs)
-    (for/list: : (Listof Tuplist) ((t : Tuple tlist)
+    (for/list: : (Listof (Listof Tuple)) ((t : Tuple tlist)
                                  #:when (hash-has-key? ht (joining-triples joining-attrs t)))
                (map (lambda: ((x : Tuple)) (compose-tuple x t joining-attrs)) (hash-ref ht (joining-triples joining-attrs t))))))
 
@@ -187,7 +181,7 @@
 (: compose-tuple (Tuple Tuple (Listof Attribute) -> Tuple))
 (define compose-tuple
   (lambda (t1 t2 joining-attrs)
-    (make-Tuple (append (joining-triples joining-attrs t1) (all-but-joining-triples joining-attrs t1) (all-but-joining-triples joining-attrs t2)))))
+    (Tuple (append (joining-triples joining-attrs t1) (all-but-joining-triples joining-attrs t1) (all-but-joining-triples joining-attrs t2)))))
 
 ; Given two sorted lists of tuples, puts together tuples with matching values in the joining attributes.
 (: mergejoin-tuples ((Listof Tuple) (Listof Tuple) (Listof Attribute) -> (Listof Tuple)))
@@ -199,8 +193,8 @@
       (let: loop-inner : (Listof Tuple) ((t1 : (Listof Tuple) t1) (t2 : (Listof Tuple) t2) (last-match : (Listof Tuple) last-match) (result : (Listof Tuple) result)) 
          (log 3 "-------------- LOOP-INNER-------------------: ~nt1:~n~a~nt2:~n~a~nlast-match:~n~a~nresult:~n~a~n" (print-tuples (take t1 (min (length t1) 2))) (print-tuples (take t2 (min (length t2) 2))) (print-tuples (take last-match (min (length last-match) 2))) (print-tuples (take result (min (length result) 2))))
         (cond ((null? t2) (process-outer (cdr t1) last-match result))
-              ;((joining-values-match atts  (car t1) (car t2)) (process-inner t1 (cdr t2) t2 (cons (make-Tuple (append (joining-triples atts (car t1)) (all-but-joining-triples atts (car t1)) (all-but-joining-triples atts (car t2)))) result))) ; match found - try next item from inner list, keeping this match als re-entry point for subsequent outer loop
-              ((joining-values-match atts  (car t1) (car t2)) (process-inner t1 (cdr t2) last-match (cons (make-Tuple (append (joining-triples atts (car t1)) (all-but-joining-triples atts (car t1)) (all-but-joining-triples atts (car t2)))) result))) ; match found - try next item from inner list, keeping this match als re-entry point for subsequent outer loop
+              ;((joining-values-match atts  (car t1) (car t2)) (process-inner t1 (cdr t2) t2 (cons (Tuple (append (joining-triples atts (car t1)) (all-but-joining-triples atts (car t1)) (all-but-joining-triples atts (car t2)))) result))) ; match found - try next item from inner list, keeping this match als re-entry point for subsequent outer loop
+              ((joining-values-match atts  (car t1) (car t2)) (process-inner t1 (cdr t2) last-match (cons (Tuple (append (joining-triples atts (car t1)) (all-but-joining-triples atts (car t1)) (all-but-joining-triples atts (car t2)))) result))) ; match found - try next item from inner list, keeping this match als re-entry point for subsequent outer loop
               ((precedes? (car t1) (car t2) atts) (process-outer (cdr t1) last-match result)) ; matching values passed over in inner list - continue outer loop with last match from inner as reentry point
               ((precedes? (car t2) (car t1) atts) (process-inner t1 (cdr t2) last-match result)) ; no match yet in inner - move forward in inner
               (else (error "mergejoin-tuples/process-inner: no condition matched for (t1 first item - t2 first item - last match): " (print-tuple (car t1)) (print-tuple (car t2)) (print-tuple (car last-match))))))) 
@@ -247,7 +241,7 @@
   (lambda (joining-attrs t tlist)
     (for/list: : (Listof Tuple) ((x : Tuple tlist)
                                  #:when (joining-values-match joining-attrs x t))
-               (make-Tuple (append (joining-triples joining-attrs t) (all-but-joining-triples joining-attrs t) (all-but-joining-triples joining-attrs x))))))
+               (Tuple (append (joining-triples joining-attrs t) (all-but-joining-triples joining-attrs t) (all-but-joining-triples joining-attrs x))))))
 
 ; Checks if 2 tuples match (= can be joined) on a set of joining attributes.
 (: joining-values-match ((Listof Attribute) Tuple Tuple -> Boolean))
@@ -259,7 +253,7 @@
 (: append-new-triples (Tuple Extlist -> Tuple))
 (define append-new-triples
   (lambda (t elist)
-    (make-Tuple (append (Tuple-triples t) (map (lambda: ((e : Extension)) (make-Triple (Extension-name e) (get-typename (Extension-operand e)) (eval-operand t (Extension-operand e)))) elist)))))
+    (Tuple (append (Tuple-triples t) (map (lambda: ((e : Extension)) (Triple (Extension-name e) (get-type (Extension-operand e)) (eval-operand t (Extension-operand e)))) elist)))))
 
 
 ; Utility functions on triples -----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -289,19 +283,19 @@
 (: cartesian-heading (Heading Heading -> Heading))
 (define cartesian-heading
   (lambda (h1 h2)
-    (make-Heading (append (Heading-attrs h1) (Heading-attrs h2)))))
+    (Heading (append (Heading-attrs h1) (Heading-attrs h2)))))
 
 ; Builds the heading for a join, concatenating - in this order - the attribute(s) we're joining on, the attributes contained in relation1 only and those contained in rel. 2 only
 (: joined-heading ((Listof Attribute) Heading Heading -> Heading))
 (define joined-heading
   (lambda (joining-attrs h1 h2)
-    (make-Heading (remove-duplicates (append joining-attrs (Heading-attrs h1) (Heading-attrs h2)) equal?))))
+    (Heading (remove-duplicates (append joining-attrs (Heading-attrs h1) (Heading-attrs h2)) equal?))))
 
 ; Builds the heading for an extension, adding to the existing attributes the ones specified in the "extension list".
 (: extended-heading (Relation Extlist -> Heading))
 (define extended-heading
   (lambda (r elist)
-    (make-Heading (append (Heading-attrs (Relation-heading r)) (map (lambda: ((e : Extension)) (make-Attribute (Extension-name e) (get-typename (Extension-operand e)))) elist)))))
+    (Heading (append (Heading-attrs (Relation-heading r)) (map (lambda: ((e : Extension)) (Attribute (Extension-name e) (get-type (Extension-operand e)))) elist)))))
 
 
 ; Utility functions on attributes --------------------------------------------------------------------------------------------------------------------------------------------------
@@ -343,20 +337,13 @@
     (match o
       ((struct Val (val)) val)
       ((struct Att (att)) (Triple-value (find-triple-for-attribute att (Tuple-triples t))))
-      ((struct AppOp (op o1 o2)) ((get-arith-function op) (eval-operand t o1) (eval-operand t o2)))
-      ((struct AppFun (f o1 o2)) (let ((o1 (eval-operand t o1)) (o2 (eval-operand t o2)))
-                                   (match o1
-                                     ((struct S (s1)) (match o2
-                                                        ((struct S (s2)) (cond
-                                                                           ((eq? f strapp) (make-S ((StrApp-p strapp) s1 s2)))
-                                                                           (else (error "eval-operand: not a function defined for 2 string args: " s1 s2))))
-                                                        ((struct N (n)) (cond
-                                                                          ((eq? f substr) (make-S ((Substr-p substr) s1 (cast exact-nonnegative-integer? (truncate (inexact->exact n))))))
-                                                                          (else (error "eval-operand: not a function defined for one string and one number arg: " s1 n))))))
-                                     ((struct N (n1)) (match o2
-                                                        ((struct S (s)) (error "eval-operand: no function defined for one number and one string arg: " f n1 s))
-                                                        ((struct N (n2)) (error "eval-operand: no function defined for 2 number args: " f n1 n2))))
-                                     (else (error "eval-operand: Operand type(s) not allowed: " o1 o2))))))))
-
-
+       ((struct App (f o1 o2)) (let: ((o1 : (U String Real) (eval-operand t o1)) (o2 : (U String Real) (eval-operand t o2)))
+                                    (cond ((eq? f string-append) (string-append (assert o1 string?) (assert o2 string?)))
+                                          ((eq? f substring) (substring (assert o1 string?) (assert o2 exact-integer?)))
+                                          ((eq? f +) (+ (assert o1 real?) (assert o2 real?)))
+                                          ((eq? f -) (- (assert o1 real?) (assert o2 real?)))
+                                          ((eq? f *) (* (assert o1 real?) (assert o2 real?)))
+                                          ((eq? f /) (/ (assert o1 real?) (assert o2 real?)))
+                                          (else (error "not a defined function: " f))))))))
+                                  
 

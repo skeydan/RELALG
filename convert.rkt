@@ -24,11 +24,11 @@
       number
       #f))
 
-(: assert (All (a) ((Option a) -> a)))
-(define (assert v)
-  (if v
-      v
-      (raise-type-error 'assert "Assertion failed" v)))
+;(: assert (All (a) ((Option a) -> a)))
+;(define (assert v)
+;  (if v
+;      v
+;      (raise-type-error 'assert "Assertion failed" v)))
 
 (: cast (All (T) ((Any -> Boolean : T) Any -> T))) 
 (define (cast p? x) 
