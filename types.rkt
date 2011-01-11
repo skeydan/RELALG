@@ -30,7 +30,14 @@
           (lambda (h hash2-recur)
             (apply + (map hash2-recur (Tuple-triples h))))))
 
-(struct: Relation ((heading : Heading) (body : Body)))
+(struct: Relation ((heading : Heading) (body : Body))
+   #:property prop:equal+hash
+    (list (lambda (r1 r2 equal?-recur)
+            (and (equal? (Relation-heading r1) (Relation-heading r2)) (equal? (Relation-body r1) (Relation-body r2))))
+          (lambda (r hash-recur)
+            (apply + (apply + (map hash-recur (Relation-heading r))) (map hash-recur (Relation-body r))))
+          (lambda (r hash2-recur)
+            (apply + (apply + (map hash2-recur (Relation-heading r))) (map hash2-recur (Relation-body r))))))      
 
 (struct: Heading ((attrs : (Listof Attribute)))
    #:property prop:equal+hash
@@ -51,7 +58,15 @@
            (lambda (a hash-recur)
             (+ (hash-recur (string-upcase (Attribute-name a))) (* 3 (hash-recur (Attribute-type a)))))))
 
-(struct: Body ((tuples : (Listof Tuple))))
+(struct: Body ((tuples : (Listof Tuple)))
+   #:property prop:equal+hash
+    (list (lambda (b1 b2 equal?-recur)
+            (let ((tuplist1 (Body-tuples b1)) (tuplist2 (Body-tuples b2))) (lists-same? tuplist1 tuplist2 equal?)))
+          (lambda (b hash-recur)
+            (apply + (map hash-recur (Body-tuples b))))
+          (lambda (b hash2-recur)
+            (apply + (map hash2-recur (Body-tuples b))))))
+         
 
 (define-datatype TupleExpr
   (Tuplevar ((id : Identifier)))
@@ -76,7 +91,8 @@
  (Semijoin ((rel1 : RelExpr) (rel2 : RelExpr)))
  (Semiminus ((rel1 : RelExpr) (rel2 : RelExpr)))
  (Extend ((r : RelExpr) (e : Extlist)))
- (Summarize ((r1 : RelExpr) (r2 : RelExpr) (a : Agglist)))
+ (Summarize ((r1 : RelExpr) (r2 : RelExpr) (e : Extlist)))
+ (Image ((t : Tuple) (r : RelExpr)))
  )
 (define-predicate RelExpr? RelExpr)
 
@@ -85,10 +101,12 @@
 (struct: Extension ((operand : Operand) (name : String)))
 
 (define-type Extlist (Listof Extension))
+(define-predicate Extlist? Extlist)
 
-(struct: Aggregation ((aggop : AggOperand) (name : String)))
+(struct: Aggregation ((operand : AggOperand) (name : String)))
 
 (define-type Agglist (Listof Aggregation))
+(define-predicate Agglist? Agglist)
 
 (define-datatype Bool-Op
   (Greater #:constant greater)
@@ -106,7 +124,8 @@
 (define-predicate Operand? Operand)
 
 (define-datatype AggOperand
-  (AppAggFun ((f : AggFun) (a : Attribute))))
+  (AppAgg ((f : AggFun) (a : Attribute))))
+(define-predicate AggOperand? AggOperand)
 
 (define-datatype Predicate
  (Is ((op : Bool-Op) (rand1 : Operand) (rand2 : Operand)))
@@ -120,6 +139,8 @@
 (define-type AggFun
   (U
    (All (a) ((Listof a) -> Nonnegative-Fixnum)) ; length (=> count tuples)
+   ((Listof Real) -> Real)
+   ((Listof Real) -> Real) ; max_, min_
    ))
 
 (define-type StringFun
@@ -142,4 +163,6 @@
 (: empty_rel Relation)
 (define empty_rel (Relation (Heading '()) (Body '())))
 
+(: empty_tuple Tuple)
+(define empty_tuple (Tuple '()))
 

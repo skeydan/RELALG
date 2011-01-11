@@ -24,8 +24,9 @@
 (: print-attribute (Attribute -> String))
 (define print-attribute
   (lambda (a)
-    (format "~a(~a)" (Attribute-name a) (Attribute-type a))))
-
+    (format "~a(~a)" (Attribute-name a) (cond ((eq? (Attribute-type a) real?) "number")
+                                              ((eq? (Attribute-type a) string?) "string")))))
+ 
 (: print-body (Body -> String))
 (define print-body
   (lambda (b)
@@ -255,6 +256,16 @@
   (lambda (t elist)
     (Tuple (append (Tuple-triples t) (map (lambda: ((e : Extension)) (Triple (Extension-name e) (get-type (Extension-operand e)) (eval-operand t (Extension-operand e)))) elist)))))
 
+;
+(: calculate-summary-triples (Relation Tuple Agglist -> (Listof Triple)))
+(define calculate-summary-triples
+  (lambda (r t alist)
+    (for/list: : (Listof Triple) ((a : Aggregation alist))
+               (let: ((matching-tuples : (Listof Tuple)
+                                       (if (equal? t empty_tuple)
+                                           (Body-tuples (Relation-body r))
+                                           (filter (lambda: ((tup : Tuple)) (andmap (lambda: ((trip : Triple)) (equal? (Triple-value trip) (Triple-value (find-corresponding-triple trip (Tuple-triples tup))))) (Tuple-triples t))) (Body-tuples (Relation-body r))))))
+                     (Triple (Aggregation-name a) (get-type (Aggregation-operand a)) (eval-agg matching-tuples (Aggregation-operand a)))))))
 
 ; Utility functions on triples -----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -276,6 +287,13 @@
   (lambda (renamings tuples)
     (for-each (lambda: ((mapping : (Pair Attribute String))) (for-each (lambda: ((t : Triple)) (set-Triple-name! t (cdr mapping))) (map (lambda: ((tup : Tuple)) (find-triple-for-attribute (car mapping) (Tuple-triples tup))) tuples))) renamings)))
 
+(: find-corresponding-triple (Triple (Listof Triple) -> Triple))
+(define find-corresponding-triple
+  (lambda (t tlist)
+    (cond ((null? tlist) (error "Corresponding triple not found in list: " t tlist))
+          ((and (equal? (Triple-name t) (Triple-name (first tlist))) (equal? (Triple-type t) (Triple-type (first tlist)))) (first tlist))
+          (else (find-corresponding-triple t (rest tlist))))))
+
 
 ; Utility functions on headings ----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -292,10 +310,13 @@
     (Heading (remove-duplicates (append joining-attrs (Heading-attrs h1) (Heading-attrs h2)) equal?))))
 
 ; Builds the heading for an extension, adding to the existing attributes the ones specified in the "extension list".
-(: extended-heading (Relation Extlist -> Heading))
+(: extended-heading (Relation (U Extlist Agglist) -> Heading))
 (define extended-heading
-  (lambda (r elist)
-    (Heading (append (Heading-attrs (Relation-heading r)) (map (lambda: ((e : Extension)) (Attribute (Extension-name e) (get-type (Extension-operand e)))) elist)))))
+  (lambda (r lst)
+    (Heading (append (Heading-attrs (Relation-heading r))
+                     (cond ((Extlist? lst) (map (lambda: ((e : Extension)) (Attribute (Extension-name e) (get-type (Extension-operand e)))) (assert lst Extlist?)))
+                           ((Agglist? lst) (map (lambda: ((e : Aggregation)) (Attribute (Aggregation-name e) (get-type (Aggregation-operand e)))) (assert lst Agglist?)))
+                           )))))
 
 
 ; Utility functions on attributes --------------------------------------------------------------------------------------------------------------------------------------------------
@@ -315,6 +336,14 @@
     (let ((a1 (Heading-attrs h1)) (a2 (Heading-attrs h2)))
       (filter (lambda: ((x : Attribute)) (contains? a2 x equal?)) a1))))
 
+; Returns all attributes 2 headings have in common
+(: attributes-difference (Heading Heading -> (Listof Attribute)))
+(define attributes-difference
+  (lambda (h1 h2)
+    (for/list: : (Listof Attribute) ((a : Attribute (Heading-attrs h1))
+                                     #:when (not (member a (Heading-attrs h2))))
+               a)))
+
 ; Checks that 2 headings don't have any attributes in common
 (: attribute-names-disjoint? (Heading Heading -> Boolean))
 (define attribute-names-disjoint?
@@ -328,6 +357,13 @@
   (lambda (renamings attrs)
     (for-each (lambda: ((mapping : (Pair Attribute String))) (for-each (lambda: ((a : Attribute)) (set-Attribute-name! a (cdr mapping))) (filter (lambda: ((att : Attribute)) (equal? att (car mapping))) attrs))) renamings)))
 
+;
+(: attlistfromtuple (Tuple -> (Listof Attribute)))
+(define attlistfromtuple
+  (lambda (t)
+    (for/list: : (Listof Attribute) ((tr : Triple (Tuple-triples t)))
+               (Attribute (Triple-name tr) (Triple-type tr)))))
+
 
 ; Evaluator functions --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -337,7 +373,7 @@
     (match o
       ((struct Val (val)) val)
       ((struct Att (att)) (Triple-value (find-triple-for-attribute att (Tuple-triples t))))
-       ((struct App (f o1 o2)) (let: ((o1 : (U String Real) (eval-operand t o1)) (o2 : (U String Real) (eval-operand t o2)))
+      ((struct App (f o1 o2)) (let: ((o1 : (U String Real) (eval-operand t o1)) (o2 : (U String Real) (eval-operand t o2)))
                                     (cond ((eq? f string-append) (string-append (assert o1 string?) (assert o2 string?)))
                                           ((eq? f substring) (substring (assert o1 string?) (assert o2 exact-integer?)))
                                           ((eq? f +) (+ (assert o1 real?) (assert o2 real?)))
@@ -346,4 +382,14 @@
                                           ((eq? f /) (/ (assert o1 real?) (assert o2 real?)))
                                           (else (error "not a defined function: " f))))))))
                                   
-
+;
+(: eval-agg ((Listof Tuple) AggOperand -> Value))
+(define eval-agg
+  (lambda (t o)
+    (match o
+      ((struct AppAgg (f a)) 
+       (cond ((eq? f length) (length t))
+             ((eq? f sum) (sum (map (lambda: ((x : Tuple)) (assert (Triple-value (find-triple-for-attribute a (Tuple-triples x))) real?)) t)))
+             ((eq? f max_) (max_ (map (lambda: ((x : Tuple)) (assert (Triple-value (find-triple-for-attribute a (Tuple-triples x))) real?)) t)))
+             ((eq? f min_) (min_ (map (lambda: ((x : Tuple)) (assert (Triple-value (find-triple-for-attribute a (Tuple-triples x))) real?)) t)))
+             (else (error "eval-agg: not a defined aggregation function: " f)))))))

@@ -1,32 +1,21 @@
 #lang typed/racket
 ;
 (require "types.rkt")
-;(require "helper-functions.rkt")
+(require "helper-functions.rkt")
 (provide (all-defined-out))
-;
-;
-;; Variant extractor function -------------------------------------------------------------------------------------------------------------------------------------------------------
-;
-;(: extract-value-variant (Value -> (U Number String)))
-;(define extract-value-variant
-;  (lambda (val)
-;    (cond ((S? val) (S-s val))
-;          ((N? val) (N-n val))
-;          (else (error "extract-value-variant: not a value: "val)))))
-;
-;; Comparison functions for values --------------------------------------------------------------------------------------------------------------------------------------------------
-;
-;;(: value=? (Value Value -> Boolean))
-;;(define value=?
-;;  (lambda (v1 v2)
-;;    (match v1
-;;      ((struct S (s1)) (match v2
-;;                         ((struct S (s2)) (string=? s1 s2))
-;;                         ((struct N (n)) (error "value=?: cannot compare string to Real: " s1 n))))
-;;      ((struct N (n1)) (match v2
-;;                         ((struct N (n2)) (= n1 n2))
-;;                         ((struct S (s)) (error "value=?: cannot compare Real to string: " n1 s)))))))
-;
+
+(: value->real (Value -> (Option Real)))
+(define (value->real value)
+  (if (real? value)
+      value
+      #f))
+
+(: value->string (Value -> (Option String)))
+(define (value->string value)
+  (if (string? value)
+      value
+      #f))
+
 (: value>? (Value Value -> Boolean))
 (define value>?
   (lambda (v1 v2)
@@ -55,7 +44,7 @@
     (not (value<? v1 v2))))
 
 
-; Functions to handle boolean and arithmetic operators -----------------------------------------------------------------------------------------------------------------------------
+; Functions to handle boolean operators -----------------------------------------------------------------------------------------------------------------------------
 
 (: negate (Bool-Op -> Bool-Op)) ; returns the opposite of a boolean operator
 (define negate
@@ -79,47 +68,27 @@
           ((eq? op less) value<?)
           (else (error "get-comp-function: Operator not known: " op)))))
 
-;(: get-arith-function (Arith-Op -> (Value Value -> Value))) ; returns the numeric function that performs the requested operation for an arithmetic operator
-;(define get-arith-function
-;  (lambda (op)
-;    (cond ((eq? op _+) add)
-;          ((eq? op _-) sub)
-;          ((eq? op _*) mul)
-;          ((eq? op _/) div)
-;          (else (error "get-arith-function: Operator not known: " op)))))
-;
-;(: get-op-function (Operator -> (U (Value Value -> Value)(Value Value -> Boolean)))) ; delegates to the specialized functions to get the operation for an arithmetic or boolean operator
-;(define get-op-function
-;  (lambda (op)
-;    (cond ((Arith-Op? op) (get-arith-function op))
-;          ((Bool-Op? op) (get-comp-function op)))))
-;
-;
+
 ; Functions to evaluate and get the result type of evaluated operands --------------------------------------------------------------------------------------------------------------
 
-(: value->real (Value -> (Option Real)))
-(define (value->real value)
-  (if (real? value)
-      value
-      #f))
-
-(: value->string (Value -> (Option String)))
-(define (value->string value)
-  (if (string? value)
-      value
-      #f))
-
-
-(: get-type (Operand -> (U (Any -> Boolean : Real) (Any -> Boolean : String)))) ; returns the resulting type of operand evaluation
+(: get-type ((U AggOperand Operand) -> (U (Any -> Boolean : Real) (Any -> Boolean : String)))) ; returns the resulting type of operand evaluation
 (define get-type
   (lambda (o)
-    (match o
-      ((struct Val (val))
-       (cond ((string? val) string?)
-       ((real? val) real?)))
-      ((struct Att (att)) (Attribute-type att))
-      ((struct App (f o1 o2)) (cond ((or (eq? f substring) (eq? f string-append)) string?)
-                                    ((or (eq? f +) (eq? f -) (eq? f /) (eq? f *)) real?)
-                                    (else (error "get-type: not a defined function: " f))))
-      (_ (error "get-type: Not an operand: " o)))))
+    (if (Operand? o)
+        (match (assert o Operand?)
+          ((struct Val (val)) (cond ((string? val) string?)
+                                    ((real? val) real?)))
+          ((struct Att (att)) (Attribute-type att))
+          ((struct App (f o1 o2)) (cond ((or (eq? f substring) (eq? f string-append)) string?)
+                                        ((or (eq? f +) (eq? f -) (eq? f /) (eq? f *)) real?)
+                                        (else (error "get-type: not a defined function: " f))))
+          (_ (error "get-type: Not an operand: " o)))
+        (match (assert o AggOperand?)
+          ((struct AppAgg (f a)) (cond ((eq? f length) real?)
+                                       ((eq? f sum) real?)
+                                       ((eq? f max_) real?)
+                                       ((eq? f min_) real?)
+                                       (else (error "get-type: not a defined aggregating function: " f))))
+          (_ (error "get-type: Not an AggOperand: " o))))))
+      
 

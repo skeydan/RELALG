@@ -31,3 +31,22 @@
 (log 1 "~a ~a" 1 2)
 (log 1 "~a" '(1))
 (log 1 "~a" 1)
+
+
+; ---------------  Aggregation functions ---------------
+(: sum ((Listof Real) -> Real))
+(define sum 
+  (lambda (l)
+    (for/fold: : Real ((acc : Real 0))
+               ((n : Real l))
+               (+ acc n)))) 
+
+(: max_ ((Listof Real) -> Real))
+(define max_ 
+  (lambda (l)
+    (if (not (null? l)) (apply max l) -inf.0)))
+
+(: min_ ((Listof Real) -> Real))
+(define min_ 
+  (lambda (l)
+    (if (not (null? l)) (apply min l) +inf.0)))

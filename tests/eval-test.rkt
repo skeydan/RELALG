@@ -4,6 +4,7 @@
 (require "../data/data.rkt")
 (require "../types.rkt")
 (require "../type-functions.rkt")
+(require "../helper-functions.rkt")
 (require "../eval.rkt")
 (require "../relation-utils.rkt")
 (require "../settings.rkt")
@@ -214,7 +215,58 @@
       (check-equal? "Londonderry" (Triple-value (find-triple-for-attribute (Attribute "newcity" string?) (Tuple-triples (car (Body-tuples (Relation-body r)))))))
       (check-equal? (degree r) (+ 4 (degree parts)))
       (check-equal? (cardinality r) (cardinality parts)))
-;
+
+;  (test-case
+;   "build-image"
+(let: ((r1 : Relation (build-image (car (filter (lambda: ((x : Tuple)) (equal? (Triple-value (find-triple-for-attribute (Attribute "s#" string?) (Tuple-triples x))) "S1"))  (Body-tuples (Relation-body suppliers)))) shipments))
+       (r2 : Relation (build-image (car (filter (lambda: ((x : Tuple)) (equal? (Triple-value (find-triple-for-attribute (Attribute "s#" string?) (Tuple-triples x))) "S5"))  (Body-tuples (Relation-body suppliers)))) shipments)))
+      ;(print-relation r2)
+      (check-equal? (cardinality r1) (cardinality (build-restriction (build-join suppliers shipments) (Is eql (Att (Attribute "s#" string?)) (Val "S1")))))
+      (check-equal? (Relation-heading r1) (Heading (list (Attribute "p#" string?) (Attribute "qty" real?))))
+      (check-equal? (cardinality r2) 0))
+
+;(test-case
+; "build-summarize with one grouping attribute"
+(let: ((r1 : Relation (build-summarize shipments (build-projection parts (list (Attribute "p#" string?))) (list (Aggregation (AppAgg length (Attribute "dummy" real?)) "count") (Aggregation (AppAgg sum (Attribute "qty" real?)) "sum") (Aggregation (AppAgg max_ (Attribute "qty" real?)) "max") (Aggregation (AppAgg min_ (Attribute "qty" real?)) "min")))))
+      ;(print-relation r1)
+      (check-equal? (Relation-heading r1) (Heading (list (Attribute "p#" string?) (Attribute "count" real?) (Attribute "sum" real?) (Attribute "max" real?) (Attribute "min" real?))))
+      (for: ((pno : String '("P1" "P2" "P3" "P4" "P5" "P6"))
+             (count : Real '(2 4 1 2 2 1))
+             (sum : Real '(600 1000 400 500 700 300))
+             (max : Real '(300 400 400 300 400 300))
+             (min : Real '(300 200 400 200 300 300)))
+            (let: ((trs : (Listof Triple) (Tuple-triples (car (Body-tuples (Relation-body (build-restriction r1 (Is eql (Att (Attribute "p#" string?)) (Val pno)))))))))
+                  (check-equal? (Triple-value (find-triple-for-attribute (Attribute "count" real?) trs)) count)
+                  (check-equal? (Triple-value (find-triple-for-attribute (Attribute "sum" real?) trs)) sum)
+                  )))
+
+;(test-case
+; "build-summarize with two grouping attributes"
+(let*: ((r1 : Relation (let: ((t : (Listof Tuple) (Body-tuples (Relation-body shipments)))) (Relation (Relation-heading shipments) (Body (append t t t)))))
+        (r2 : Relation (build-summarize r1 (build-projection shipments (list (Attribute "p#" string?) (Attribute "s#" string?))) (list (Aggregation (AppAgg length (Attribute "dummy" real?)) "count") (Aggregation (AppAgg sum (Attribute "qty" real?)) "sum") (Aggregation (AppAgg max_ (Attribute "qty" real?)) "max") (Aggregation (AppAgg min_ (Attribute "qty" real?)) "min")))))
+       (print-relation r2)
+       (check-equal? (Relation-heading r2) (Heading (list (Attribute "p#" string?) (Attribute "s#" string?) (Attribute "count" real?) (Attribute "sum" real?) (Attribute "max" real?) (Attribute "min" real?))))
+      (for: ((key : (Pairof String String) '(("P1" . "S1") ("P1" . "S2") ("P2" . "S1") ("P2" . "S2") ("P2" . "S3") ("P2" . "S4") ("P3" . "S1") ("P4" . "S1") ("P4" . "S4") ("P5" . "S1") ("P5" . "S4") ("P6" . "S1")))
+             (count : Real '(3 3 3 3 3 3 3 3 3 3 3 3))
+             (sum : Real '(900 900 600 1200 600 600 1200 600 900 900 1200 900))
+             (max : Real '(300 300 200 400 200 200 400 200 300 300 400 900))
+             (min : Real '(300 300 200 400 200 200 400 200 300 300 400 900)))
+            (let: ((trs : (Listof Triple) (Tuple-triples (car (Body-tuples (Relation-body (build-restriction r2 (And (Is eql (Att (Attribute "p#" string?)) (Val (car key))) (Is eql (Att (Attribute "s#" string?)) (Val (cdr key)))))))))))
+                  (check-equal? (Triple-value (find-triple-for-attribute (Attribute "count" real?) trs)) count)
+                  (check-equal? (Triple-value (find-triple-for-attribute (Attribute "sum" real?) trs)) sum)
+                  )))
+
+;(test-case
+; "build-summarize without a grouping attribute (i.e., computing over all tuples"   
+(let: ((r1 : Relation (build-summarize shipments empty_rel (list (Aggregation (AppAgg length (Attribute "dummy" real?)) "count") (Aggregation (AppAgg sum (Attribute "qty" real?)) "sum") (Aggregation (AppAgg max_ (Attribute "qty" real?)) "max") (Aggregation (AppAgg min_ (Attribute "qty" real?)) "min")))))
+      ;(print-relation r1)
+      (check-equal? (Relation-heading r1) (Heading (list (Attribute "count" real?) (Attribute "sum" real?) (Attribute "max" real?) (Attribute "min" real?))))
+      (let: ((trs : (Listof Triple) (Tuple-triples (car (Body-tuples (Relation-body r1))))))
+            (check-equal? (Triple-value (find-triple-for-attribute (Attribute "count" real?) trs)) 12)
+            (check-equal? (Triple-value (find-triple-for-attribute (Attribute "sum" real?) trs)) 3500)
+            (check-equal? (Triple-value (find-triple-for-attribute (Attribute "max" real?) trs)) 400)
+            (check-equal? (Triple-value (find-triple-for-attribute (Attribute "min" real?) trs)) 200)))
+
 ;(parameterize ((default-join-method
 ;                 ;'hash
 ;                 ;'sort-merge
@@ -223,12 +275,4 @@
 ;
 ;(run-tests additional-relational-operators)
 
-; build-summarize
-;(test-case
-; "build-summarize with one grouping attribute"
-; (let ((r (build-summarize shipments (Project parts (Heading (list (Attribute "p#" string?)))) (Agglist (list (Aggregation (AppAggFun  (Sum length) (Attribute "totQty" real?))))))))
-;   (print-relation r)
-;   (check-equal? (Relation-heading r) (Heading (list (Attribute "p#" string?) (Attribute "totQty" real?))))
-;   ))
-;   
 
