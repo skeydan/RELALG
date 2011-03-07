@@ -154,6 +154,14 @@
       (check-equal? (cardinality r6) 0))
 ;  
 ;  (test-case
+;   "build-restriction comparing relations"
+;   ; s where (!!sp) {pno} = p {pno}
+(let: ((r : Relation (build-restriction suppliers (Is eql (RelX (Project (Image (Rel shipments)) (Heading (list (Attribute "p#" string?)))))  (RelX (Project (Rel parts) (Heading (list (Attribute "p#" string?)))))))))
+  (print-relation r)
+  (check-equal? (cardinality r) 1)
+  (check-equal? "S1" (Triple-value (find-triple-for-attribute (Attribute "s#" string?) (Tuple-triples (car (Body-tuples (Relation-body r))))))))
+
+;  (test-case
 ;   "build-renamed-relation"
 (let: ((r1 : Relation (build-renamed-relation parts (list (cons (Attribute "city" string?) "location") (cons (Attribute "color" string?) "howitlooks"))))
        (r2 : Relation (build-renamed-relation parts '())))
@@ -217,6 +225,19 @@
       (check-equal? (cardinality r) (cardinality parts)))
 
 ;  (test-case
+;   "build-extension doing aggregation over an image relation as the operand"
+;   extend s add (sum (!!sp, qty) as totq, max (!!sp, qty) as maxq)
+(let: ((r : Relation (build-extension suppliers (list (Extension (Agg sum (RelX (Image (Rel shipments))) (Attribute "qty" real?)) "totq") (Extension (Agg max_ (RelX (Image (Rel shipments)))  (Attribute "qty" real?)) "maxq")))))
+      ;(print-relation r)
+       (for: ((sno : String '("S1" "S2" "S3" "S4" "S5"))
+              (sum : Real '(1700 700 200 900 0))
+              (max : Real '(400 400 200 400 -inf.0)))
+              (let: ((trs : (Listof Triple) (Tuple-triples (car (Body-tuples (Relation-body (build-restriction r (Is eql (Att (Attribute "s#" string?)) (Val sno)))))))))
+                  (check-equal? (Triple-value (find-triple-for-attribute (Attribute "totq" real?) trs)) sum)
+                  (check-equal? (Triple-value (find-triple-for-attribute (Attribute "maxq" real?) trs)) max)
+                  )))
+   
+;  (test-case
 ;   "build-image"
 (let: ((r1 : Relation (build-image (car (filter (lambda: ((x : Tuple)) (equal? (Triple-value (find-triple-for-attribute (Attribute "s#" string?) (Tuple-triples x))) "S1"))  (Body-tuples (Relation-body suppliers)))) shipments))
        (r2 : Relation (build-image (car (filter (lambda: ((x : Tuple)) (equal? (Triple-value (find-triple-for-attribute (Attribute "s#" string?) (Tuple-triples x))) "S5"))  (Body-tuples (Relation-body suppliers)))) shipments)))
@@ -227,7 +248,7 @@
 
 ;(test-case
 ; "build-summarize with one grouping attribute"
-(let: ((r1 : Relation (build-summarize shipments (build-projection parts (list (Attribute "p#" string?))) (list (Aggregation (AppAgg length (Attribute "dummy" real?)) "count") (Aggregation (AppAgg sum (Attribute "qty" real?)) "sum") (Aggregation (AppAgg max_ (Attribute "qty" real?)) "max") (Aggregation (AppAgg min_ (Attribute "qty" real?)) "min")))))
+(let: ((r1 : Relation (build-summarize shipments (build-projection parts (list (Attribute "p#" string?))) (list (Aggspec length (Attribute "dummy" real?) "count") (Aggspec sum (Attribute "qty" real?) "sum") (Aggspec max_ (Attribute "qty" real?) "max") (Aggspec min_ (Attribute "qty" real?) "min")))))
       ;(print-relation r1)
       (check-equal? (Relation-heading r1) (Heading (list (Attribute "p#" string?) (Attribute "count" real?) (Attribute "sum" real?) (Attribute "max" real?) (Attribute "min" real?))))
       (for: ((pno : String '("P1" "P2" "P3" "P4" "P5" "P6"))
@@ -243,8 +264,8 @@
 ;(test-case
 ; "build-summarize with two grouping attributes"
 (let*: ((r1 : Relation (let: ((t : (Listof Tuple) (Body-tuples (Relation-body shipments)))) (Relation (Relation-heading shipments) (Body (append t t t)))))
-        (r2 : Relation (build-summarize r1 (build-projection shipments (list (Attribute "p#" string?) (Attribute "s#" string?))) (list (Aggregation (AppAgg length (Attribute "dummy" real?)) "count") (Aggregation (AppAgg sum (Attribute "qty" real?)) "sum") (Aggregation (AppAgg max_ (Attribute "qty" real?)) "max") (Aggregation (AppAgg min_ (Attribute "qty" real?)) "min")))))
-       (print-relation r2)
+        (r2 : Relation (build-summarize r1 (build-projection shipments (list (Attribute "p#" string?) (Attribute "s#" string?))) (list (Aggspec length (Attribute "dummy" real?) "count") (Aggspec sum (Attribute "qty" real?) "sum") (Aggspec max_ (Attribute "qty" real?) "max") (Aggspec min_ (Attribute "qty" real?) "min")))))
+       ;(print-relation r2)
        (check-equal? (Relation-heading r2) (Heading (list (Attribute "p#" string?) (Attribute "s#" string?) (Attribute "count" real?) (Attribute "sum" real?) (Attribute "max" real?) (Attribute "min" real?))))
       (for: ((key : (Pairof String String) '(("P1" . "S1") ("P1" . "S2") ("P2" . "S1") ("P2" . "S2") ("P2" . "S3") ("P2" . "S4") ("P3" . "S1") ("P4" . "S1") ("P4" . "S4") ("P5" . "S1") ("P5" . "S4") ("P6" . "S1")))
              (count : Real '(3 3 3 3 3 3 3 3 3 3 3 3))
@@ -258,7 +279,7 @@
 
 ;(test-case
 ; "build-summarize without a grouping attribute (i.e., computing over all tuples"   
-(let: ((r1 : Relation (build-summarize shipments empty_rel (list (Aggregation (AppAgg length (Attribute "dummy" real?)) "count") (Aggregation (AppAgg sum (Attribute "qty" real?)) "sum") (Aggregation (AppAgg max_ (Attribute "qty" real?)) "max") (Aggregation (AppAgg min_ (Attribute "qty" real?)) "min")))))
+(let: ((r1 : Relation (build-summarize shipments empty_rel (list (Aggspec length (Attribute "dummy" real?) "count") (Aggspec sum (Attribute "qty" real?) "sum") (Aggspec max_ (Attribute "qty" real?) "max") (Aggspec min_ (Attribute "qty" real?) "min")))))
       ;(print-relation r1)
       (check-equal? (Relation-heading r1) (Heading (list (Attribute "count" real?) (Attribute "sum" real?) (Attribute "max" real?) (Attribute "min" real?))))
       (let: ((trs : (Listof Triple) (Tuple-triples (car (Body-tuples (Relation-body r1))))))

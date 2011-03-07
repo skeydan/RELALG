@@ -22,7 +22,9 @@
      (cond ((and (real? v1) (real? v2)) (> v1 v2))
           ((or (real? v1) (real? v2)) (error "value>?: cannot compare a number to a not-number: " v1 v2))
           ((and (string? v1) (string? v2)) (string>? v1 v2))
-          ((or (string? v1) (string? v2)) (error "value>?: cannot compare a string to a not-string: " v1 v2)))))
+          ((or (string? v1) (string? v2)) (error "value>?: cannot compare a string to a not-string: " v1 v2))
+           ((or (Relation? v1) (Relation? v2)) (error "value<?: cannot compare relations: " v1 v2))
+          (else (error "value<?: cannot compare values: " v1 v2)))))
 
 (: value<=? (Value Value -> Boolean))
 (define value<=?
@@ -36,7 +38,9 @@
     (cond ((and (real? v1) (real? v2)) (< v1 v2))
           ((or (real? v1) (real? v2)) (error "value<?: cannot compare a number to a not-number: " v1 v2))
           ((and (string? v1) (string? v2)) (string<? v1 v2))
-          ((or (string? v1) (string? v2)) (error "value<?: cannot compare a string to a not-string: " v1 v2)))))
+          ((or (string? v1) (string? v2)) (error "value<?: cannot compare a string to a not-string: " v1 v2))
+          ((or (Relation? v1) (Relation? v2)) (error "value<?: cannot compare relations: " v1 v2))
+          (else (error "value<?: cannot compare values: " v1 v2)))))
 
 (: value>=? (Value Value -> Boolean))
 (define value>=?
@@ -71,24 +75,21 @@
 
 ; Functions to evaluate and get the result type of evaluated operands --------------------------------------------------------------------------------------------------------------
 
-(: get-type ((U AggOperand Operand) -> (U (Any -> Boolean : Real) (Any -> Boolean : String)))) ; returns the resulting type of operand evaluation
+;(: get-type ((U AggOperand Operand) -> (U (Any -> Boolean : Real) (Any -> Boolean : String)))) ; returns the resulting type of operand evaluation
+(: get-type (Operand -> (U (Any -> Boolean : Real) (Any -> Boolean : String) (Any -> Boolean : Relation))))
 (define get-type
   (lambda (o)
-    (if (Operand? o)
-        (match (assert o Operand?)
-          ((struct Val (val)) (cond ((string? val) string?)
-                                    ((real? val) real?)))
-          ((struct Att (att)) (Attribute-type att))
-          ((struct App (f o1 o2)) (cond ((or (eq? f substring) (eq? f string-append)) string?)
-                                        ((or (eq? f +) (eq? f -) (eq? f /) (eq? f *)) real?)
-                                        (else (error "get-type: not a defined function: " f))))
-          (_ (error "get-type: Not an operand: " o)))
-        (match (assert o AggOperand?)
-          ((struct AppAgg (f a)) (cond ((eq? f length) real?)
-                                       ((eq? f sum) real?)
-                                       ((eq? f max_) real?)
-                                       ((eq? f min_) real?)
-                                       (else (error "get-type: not a defined aggregating function: " f))))
-          (_ (error "get-type: Not an AggOperand: " o))))))
-      
-
+    (match o
+      ((struct Val (val)) (cond ((string? val) string?) ((real? val) real?) ((Relation? val) Relation?)))
+      ((struct Att (att)) (Attribute-type att))
+      ((struct App (f o1 o2)) (cond ((or (eq? f substring) (eq? f string-append)) string?)
+                                    ((or (eq? f +) (eq? f -) (eq? f /) (eq? f *)) real?) 
+                                    (else (error "get-type: not a defined function: " f))))
+      ((struct Agg (f o a)) (cond ((eq? f length) real?)
+                                  ((eq? f sum) real?)
+                                  ((eq? f max_) real?)
+                                  ((eq? f min_) real?)
+                                  (else (error "get-type: not a defined aggregating function: " f))))
+      ((struct RelX (r)) Relation?)
+                      
+      (_ (error "get-type: Not an operand: " o)))))

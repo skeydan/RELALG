@@ -7,11 +7,11 @@
 
 ; Types ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-(define-type Value (U Real String)) 
+(define-type Value (U Real String Relation)) 
 
 (struct: Identifier ((name : Symbol)))
 
-(define-struct: Triple ((name : String) (type : (U (Any -> Boolean : Real) (Any -> Boolean : String))) (value : Value))
+(define-struct: Triple ((name : String) (type : (U (Any -> Boolean : Real) (Any -> Boolean : String) (U (Any -> Boolean : Relation)))) (value : Value))
   #:mutable
   #:property prop:equal+hash
     (list (lambda (t1 t2 equal?-recur) ; Attribute names are case insensitive, attribute type names are not; values are treated individually for each variant
@@ -48,7 +48,7 @@
           (lambda (h hash2-recur)
             (apply + (map hash2-recur (Heading-attrs h))))))
 
-(struct: Attribute ((name : String) (type : (U (Any -> Boolean : Real) (Any -> Boolean : String))))
+(struct: Attribute ((name : String) (type : (U (Any -> Boolean : Real) (Any -> Boolean : String) (Any -> Boolean : Relation))))
   #:mutable
   #:property prop:equal+hash
     (list (lambda (a1 a2 equal?-recur) ; Attribute names are case insensitive, attribute type names are not
@@ -91,8 +91,8 @@
  (Semijoin ((rel1 : RelExpr) (rel2 : RelExpr)))
  (Semiminus ((rel1 : RelExpr) (rel2 : RelExpr)))
  (Extend ((r : RelExpr) (e : Extlist)))
- (Summarize ((r1 : RelExpr) (r2 : RelExpr) (e : Extlist)))
- (Image ((t : Tuple) (r : RelExpr)))
+ (Summarize ((r1 : RelExpr) (r2 : RelExpr) (a : Agglist)))
+ (Image ((r : RelExpr)))
  )
 (define-predicate RelExpr? RelExpr)
 
@@ -103,29 +103,19 @@
 (define-type Extlist (Listof Extension))
 (define-predicate Extlist? Extlist)
 
-(struct: Aggregation ((operand : AggOperand) (name : String)))
+(struct: Aggspec ((f : AggFun) (a : Attribute) (name : String)))
 
-(define-type Agglist (Listof Aggregation))
+(define-type Agglist (Listof Aggspec))
 (define-predicate Agglist? Agglist)
-
-(define-datatype Bool-Op
-  (Greater #:constant greater)
-  (GreaterEql #:constant greatereql)
-  (Less #:constant less)
-  (LessEql #:constant lesseql)
-  (Eql #:constant eql)
-  (NotEql #:constant noteql))
-(define-predicate Bool-Op? Bool-Op)
 
 (define-datatype Operand
   (Att ((att : Attribute)))
   (Val ((val : Value)))
-  (App ((f : Fun) (o1 : Operand) (o2 : Operand))))
+  (App ((f : Fun) (o1 : Operand) (o2 : Operand)))
+  (Agg ((f : AggFun) (o : Operand) (a : Attribute)))
+  (RelX ((r : RelExpr)))
+  )
 (define-predicate Operand? Operand)
-
-(define-datatype AggOperand
-  (AppAgg ((f : AggFun) (a : Attribute))))
-(define-predicate AggOperand? AggOperand)
 
 (define-datatype Predicate
  (Is ((op : Bool-Op) (rand1 : Operand) (rand2 : Operand)))
@@ -134,6 +124,15 @@
  (Or ((p1 : Predicate) (p2 : Predicate))))
 (define-predicate Predicate? Predicate) 
 
+(define-datatype Bool-Op
+  (Greater #:constant greater)
+  (GreaterEql #:constant greatereql)
+  (Less #:constant less)
+  (LessEql #:constant lesseql)
+  (Eql #:constant eql)
+  (NotEql #:constant noteql))
+(define-predicate Bool-Op? Bool-Op)  
+  
 (define-type Fun (U StringFun ArithFun))
 
 (define-type AggFun

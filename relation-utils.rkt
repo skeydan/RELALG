@@ -69,6 +69,11 @@
   (lambda (r)
     (Relation (Heading (map (lambda: ((a :  Attribute)) (Attribute (Attribute-name a) (Attribute-type a))) (Heading-attrs (Relation-heading r)))) (Body (map (lambda: ((tup : Tuple)) (Tuple (map (lambda: ((trip : Triple)) (Triple (Triple-name trip) (Triple-type trip) (Triple-value trip))) (Tuple-triples tup))))  (Body-tuples (Relation-body r)))))))
 
+; constructs a relation from a given list of tuples
+(: tuples->relation ((Listof Tuple) -> Relation))
+(define tuples->relation 
+  (lambda (tlist)
+    (Relation (Heading (attlistfromtuple (car tlist))) (Body tlist))))
 
 ; Utility functions on tuples ------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -250,22 +255,6 @@
   (lambda (joining-attrs t1 t2)
     (andmap (lambda: ((x : Attribute)) (equal? (Triple-value (find-triple-for-attribute x (Tuple-triples t1))) (Triple-value (find-triple-for-attribute x (Tuple-triples t2))))) joining-attrs)))
 
-; Given a tuple and a list of extensions, builds a new tuple, constructing new triples from the names and operations specified in the extension list and appending them to the existing triples.
-(: append-new-triples (Tuple Extlist -> Tuple))
-(define append-new-triples
-  (lambda (t elist)
-    (Tuple (append (Tuple-triples t) (map (lambda: ((e : Extension)) (Triple (Extension-name e) (get-type (Extension-operand e)) (eval-operand t (Extension-operand e)))) elist)))))
-
-;
-(: calculate-summary-triples (Relation Tuple Agglist -> (Listof Triple)))
-(define calculate-summary-triples
-  (lambda (r t alist)
-    (for/list: : (Listof Triple) ((a : Aggregation alist))
-               (let: ((matching-tuples : (Listof Tuple)
-                                       (if (equal? t empty_tuple)
-                                           (Body-tuples (Relation-body r))
-                                           (filter (lambda: ((tup : Tuple)) (andmap (lambda: ((trip : Triple)) (equal? (Triple-value trip) (Triple-value (find-corresponding-triple trip (Tuple-triples tup))))) (Tuple-triples t))) (Body-tuples (Relation-body r))))))
-                     (Triple (Aggregation-name a) (get-type (Aggregation-operand a)) (eval-agg matching-tuples (Aggregation-operand a)))))))
 
 ; Utility functions on triples -----------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -315,8 +304,7 @@
   (lambda (r lst)
     (Heading (append (Heading-attrs (Relation-heading r))
                      (cond ((Extlist? lst) (map (lambda: ((e : Extension)) (Attribute (Extension-name e) (get-type (Extension-operand e)))) (assert lst Extlist?)))
-                           ((Agglist? lst) (map (lambda: ((e : Aggregation)) (Attribute (Aggregation-name e) (get-type (Aggregation-operand e)))) (assert lst Agglist?)))
-                           )))))
+                           ((Agglist? lst) (map (lambda: ((a : Aggspec)) (Attribute (Aggspec-name a) (get-type (Agg (Aggspec-f a) (Val empty_rel) (Aggspec-a a)))))  (assert lst Agglist?))))))))
 
 
 ; Utility functions on attributes --------------------------------------------------------------------------------------------------------------------------------------------------
@@ -325,7 +313,7 @@
 (: find-triple-for-attribute (Attribute (Listof Triple) -> Triple))
 (define find-triple-for-attribute
   (lambda (a tlist)
-    (cond ((null? tlist) (error "Joining attribute not found in Tuple: " a tlist))
+    (cond ((null? tlist) (error "Joining attribute not found in Tuple: " (print-attribute a) (print-tuple (Tuple tlist))))
           ((triple-attribute=? a (first tlist)) (first tlist))
           (else (find-triple-for-attribute a (rest tlist))))))
 
@@ -365,31 +353,3 @@
                (Attribute (Triple-name tr) (Triple-type tr)))))
 
 
-; Evaluator functions --------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-(: eval-operand (Tuple Operand -> Value))
-(define eval-operand
-  (lambda (t o)
-    (match o
-      ((struct Val (val)) val)
-      ((struct Att (att)) (Triple-value (find-triple-for-attribute att (Tuple-triples t))))
-      ((struct App (f o1 o2)) (let: ((o1 : (U String Real) (eval-operand t o1)) (o2 : (U String Real) (eval-operand t o2)))
-                                    (cond ((eq? f string-append) (string-append (assert o1 string?) (assert o2 string?)))
-                                          ((eq? f substring) (substring (assert o1 string?) (assert o2 exact-integer?)))
-                                          ((eq? f +) (+ (assert o1 real?) (assert o2 real?)))
-                                          ((eq? f -) (- (assert o1 real?) (assert o2 real?)))
-                                          ((eq? f *) (* (assert o1 real?) (assert o2 real?)))
-                                          ((eq? f /) (/ (assert o1 real?) (assert o2 real?)))
-                                          (else (error "not a defined function: " f))))))))
-                                  
-;
-(: eval-agg ((Listof Tuple) AggOperand -> Value))
-(define eval-agg
-  (lambda (t o)
-    (match o
-      ((struct AppAgg (f a)) 
-       (cond ((eq? f length) (length t))
-             ((eq? f sum) (sum (map (lambda: ((x : Tuple)) (assert (Triple-value (find-triple-for-attribute a (Tuple-triples x))) real?)) t)))
-             ((eq? f max_) (max_ (map (lambda: ((x : Tuple)) (assert (Triple-value (find-triple-for-attribute a (Tuple-triples x))) real?)) t)))
-             ((eq? f min_) (min_ (map (lambda: ((x : Tuple)) (assert (Triple-value (find-triple-for-attribute a (Tuple-triples x))) real?)) t)))
-             (else (error "eval-agg: not a defined aggregation function: " f)))))))
